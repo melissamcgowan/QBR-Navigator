@@ -36,7 +36,7 @@ It reuses the goal, milestone, owner and due date structure of the Success Plan 
 
 ## Run it
 
-Open `qbr-navigator.html` in a browser. There is nothing to install or build. Fonts load from Google Fonts and fall back to system fonts offline.
+Open (https://melissamcgowan.github.io/QBR-Navigator/) in a browser. There is nothing to install or build. Fonts load from Google Fonts and fall back to system fonts offline.
 
 ## Roadmap ideas
 
