@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QBR Navigator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout concept: a trail map. The page opens on where the customer stands (year in review),
+   then every tab points forward: goals with pace projections, a dated roadmap, whitespace, and what-if levers.
+   Teal = what has happened. Navy outline = where the current pace leads. */
+:root{
+  --bg:#F1F4F5; --surface:#FFFFFF; --surface-2:#E7ECEE; --ink:#14232B; --muted:#55666E; --line:#D3DCE0;
+  --accent:#0B6E73; --accent-soft:#D5ECEC; --on-accent:#FFFFFF;
+  --future:#2C4A7F; --future-soft:#DCE6F5;
+  --good:#23764A; --good-soft:#DAEFE2; --warn:#9A6400; --warn-soft:#F8EBCB; --bad:#B03A2A; --bad-soft:#F6DDD8;
+  --font-display:'Bricolage Grotesque',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E181D; --surface:#15232A; --surface-2:#1E3039; --ink:#E6EEF1; --muted:#9AAEB6; --line:#2B404A;
+    --accent:#4DB8BD; --accent-soft:#17383C; --on-accent:#0E181D;
+    --future:#8FB0E8; --future-soft:#1E2E4A;
+    --good:#5CC38A; --good-soft:#173826; --warn:#E3AC3C; --warn-soft:#3B2E10; --bad:#E4705F; --bad-soft:#40201B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E181D; --surface:#15232A; --surface-2:#1E3039; --ink:#E6EEF1; --muted:#9AAEB6; --line:#2B404A;
+  --accent:#4DB8BD; --accent-soft:#17383C; --on-accent:#0E181D;
+  --future:#8FB0E8; --future-soft:#1E2E4A;
+  --good:#5CC38A; --good-soft:#173826; --warn:#E3AC3C; --warn-soft:#3B2E10; --bad:#E4705F; --bad-soft:#40201B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:clamp(16px,4vw,40px);padding-block:20px 56px}
+.wrap{max-width:1120px;margin-inline:auto}
+h1,h2,h3{font-family:var(--font-display);margin:0;line-height:1.15;text-wrap:balance}
+h2{font-size:20px;font-weight:700;letter-spacing:-.01em}
+h3{font-size:16px;font-weight:700}
+p{margin:0}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;gap:16px 24px;justify-content:space-between;align-items:flex-end;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.acct-name{font-size:clamp(28px,5vw,44px);font-weight:700;letter-spacing:-.02em}
+.sub{color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 18px;margin-top:8px;font-size:14px}
+.pick{display:grid;gap:4px}
+.pick label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-width:min(100%,260px)}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.stat .v{font-family:var(--font-display);font-size:30px;font-weight:700;margin-top:2px;line-height:1.1}
+.stat .d{font-size:13px;color:var(--muted);margin-top:2px}
+.c-good{color:var(--good)} .c-warn{color:var(--warn)} .c-bad{color:var(--bad)}
+
+nav.tabs{display:flex;gap:2px;margin-top:22px;overflow-x:auto;border-bottom:1px solid var(--line)}
+.tab{appearance:none;background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--ink)}
+main{margin-top:22px;display:grid;gap:16px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;min-width:0;display:grid;gap:12px;align-content:start}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px}
+.lead{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;background:var(--accent-soft);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.lead .txt{flex:1 1 420px;min-width:0}
+.lead .txt p.t{font-family:var(--font-display);font-size:clamp(18px,2.4vw,22px);font-weight:600;line-height:1.3;margin-top:4px;text-wrap:pretty}
+.btn{appearance:none;font:inherit;font-weight:600;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.btn.ghost[aria-pressed="false"]:hover{background:var(--accent-soft)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.on{color:var(--good);background:var(--good-soft)}
+.pill.risk{color:var(--warn);background:var(--warn-soft)}
+.pill.off{color:var(--bad);background:var(--bad-soft)}
+.pill.achieved{color:var(--accent);background:var(--accent-soft)}
+.chip{display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.chip.Customer{background:var(--future-soft);color:var(--future)}
+.chip.Vendor{background:var(--accent-soft);color:var(--accent)}
+.chip.Joint{background:var(--surface-2);color:var(--ink)}
+
+.hl{display:grid;gap:14px}
+.hl-item{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:baseline}
+.hl-big{font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--accent);line-height:1.1}
+.hl-item b{display:block;font-size:14px}
+.hl-item span.t{font-size:14px;color:var(--muted)}
+.sup{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.sup div{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+.sup .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.sup .v{font-family:var(--font-mono);font-size:17px;font-weight:500}
+
+.chart svg{width:100%;height:auto;display:block}
+.svg-t{fill:var(--muted);font-family:var(--font-mono);font-size:11px}
+.svg-t.strong{fill:var(--ink);font-weight:500}
+.svg-t.acc{fill:var(--accent);font-weight:500}
+.svg-t.fut{fill:var(--future);font-weight:500}
+.grid-l{stroke:var(--line);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:16px;height:0;border-top:3px solid var(--accent);vertical-align:middle;margin-right:6px}
+.legend i.dash{border-top:2px dashed var(--muted)}
+.legend i.fut{border-top:2px dashed var(--future)}
+.legend i.dia{width:10px;height:10px;border:2px solid var(--future);background:var(--surface);transform:rotate(45deg);margin-right:8px}
+
+.mslist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.mslist li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:start}
+.box{width:18px;height:18px;border-radius:5px;border:2px solid var(--muted);display:grid;place-items:center;font-size:12px;line-height:1;margin-top:2px}
+.box.done{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.box.late{border-color:var(--bad)}
+.ms-d{font-family:var(--font-mono);font-size:13px;color:var(--muted);white-space:nowrap}
+.ms-d.late{color:var(--bad);font-weight:500}
+.done-t{color:var(--muted)}
+
+.goals{display:grid;gap:16px}
+.goal{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px;min-width:0}
+.goal-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;align-items:flex-start}
+.goal-h h3{font-size:19px;flex:1 1 300px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.facts div{min-width:0}
+.facts .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.facts .v{font-family:var(--font-mono);font-size:16px;font-weight:500;overflow-wrap:anywhere}
+.track{position:relative;height:14px;background:var(--surface-2);border-radius:7px;margin:12px 0 4px}
+.fill{position:absolute;inset:0 auto 0 0;border-radius:7px;background:var(--accent)}
+.proj{position:absolute;top:50%;width:14px;height:14px;border:3px solid var(--future);background:var(--surface);transform:translate(-50%,-50%) rotate(45deg)}
+.pace{font-size:14px;text-wrap:pretty}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px 28px}
+.gap-box{background:var(--surface-2);border-radius:8px;padding:10px 12px;font-size:14px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.actions{display:grid;gap:0}
+.action{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;padding:12px 0;border-top:1px solid var(--line);align-items:center}
+.action:first-child{border-top:0}
+.action .meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px;color:var(--muted);margin-top:4px}
+.action .ttl{font-weight:500}
+.action.on-c .ttl{color:var(--ink)}
+.scroll{overflow-x:auto}
+.scroll svg{min-width:780px;width:100%;height:auto;display:block}
+.band{fill:var(--surface-2);opacity:.45}
+.bar{opacity:.9}
+.bar.on{fill:var(--good)} .bar.risk{fill:var(--warn)} .bar.off{fill:var(--bad)} .bar.achieved{fill:var(--accent)}
+.ms{stroke:var(--surface);stroke-width:2}
+.ms.done{fill:var(--accent)} .ms.open{fill:var(--surface);stroke:var(--ink);stroke-width:2} .ms.late{fill:var(--surface);stroke:var(--bad);stroke-width:2.5}
+.fin{fill:var(--surface);stroke:var(--future);stroke-width:2.5}
+.today{stroke:var(--ink);stroke-width:1.5;stroke-dasharray:4 3}
+.renew{stroke:var(--future);stroke-width:2}
+textarea{width:100%;font:13px/1.5 var(--font-mono);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px;resize:vertical}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
+.opp{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:10px;align-content:start;min-width:0}
+.opp ul{margin:0;padding:0;list-style:none;display:grid;gap:4px;font-size:14px}
+.opp li{display:flex;justify-content:space-between;gap:10px}
+.opp li span.l{color:var(--future);font-family:var(--font-mono);font-weight:500;white-space:nowrap}
+.opp .foot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-top:2px}
+
+.wi{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.wi{grid-template-columns:minmax(0,1fr)}}
+.lever{display:grid;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.lever:first-of-type{border-top:0}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.sw{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.sw .n{font-weight:500}
+.sw .s{font-size:13px;color:var(--muted)}
+.res-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.res-tiles div{background:var(--surface-2);border-radius:10px;padding:12px 14px}
+.res-tiles .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.res-tiles .v{font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1.2}
+.res-tiles .v small{font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--good)}
+.wi-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:6px 18px;padding:14px 0;border-top:1px solid var(--line)}
+@media (max-width:620px){.wi-row{grid-template-columns:minmax(0,1fr)}}
+.bar2{position:relative;height:10px;background:var(--surface-2);border-radius:5px;margin:7px 0 3px}
+.bar2>i{position:absolute;inset:0 auto 0 0;border-radius:5px}
+.bar2>i.on{background:var(--good)} .bar2>i.risk{background:var(--warn)} .bar2>i.off{background:var(--bad)} .bar2>i.achieved{background:var(--accent)}
+.bar2>i.ghost{opacity:.35}
+.bar2 .tick{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.rowlab{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.insight{font-family:var(--font-display);font-size:19px;font-weight:600;line-height:1.3;text-wrap:pretty}
+footer.note{margin-top:28px;font-size:13px;color:var(--muted);display:grid;gap:4px}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="root"></div>
+
+<script>
+(function(){
+/* ============================ DATA LAYER ============================
+   Everything below is synthetic and shaped like a customer success platform export:
+   account profile, 12 months of usage, support summary, success plan goals with milestones,
+   agreed actions, adoption whitespace and expansion candidates.
+   Replace this block with a live export and the rest of the app keeps working. */
+const ASOF = new Date(2026,9,7);   // review date, Oct 7 2026
+const ms = (t,due,done)=>({t,due,done:!!done});
+const ac = (id,t,owner,who,due,goal)=>({id,t,owner,who,due,goal});
+
+const ACCTS = [
+{
+  id:'halvorsen', name:'Halvorsen Logistics', segment:'Enterprise', industry:'Freight and last-mile delivery',
+  arr:480000, renewal:'2027-03-31', csm:'Priya Raman',
+  sponsor:'Dana Whitfield, VP Operations', champion:'Marcus Lee, Director of Dispatch',
+  health:78, nps:41,
+  usage:{licensed:[500,500,500,600,600,600,600,600,600,600,600,600], active:[210,235,262,280,301,330,352,371,395,410,428,438]},
+  support:{tickets:94, firstResponse:'3.1 hrs', csat:'4.4', escalations:3},
+  highlights:[
+    {big:'+109%', label:'Monthly active users', text:'Grew from 210 to 438 over 12 months as hubs 1 to 6 went live.'},
+    {big:'64%', label:'Exceptions handled in the app', text:'Up from 31% a year ago, which means fewer phone calls between hubs and dispatch.'},
+    {big:'6 of 9', label:'Regional hubs live', text:'Hubs 5 and 6 launched in September, ahead of the original schedule.'}
+  ],
+  goals:[
+    {id:'g1', title:'Cut dispatch exception resolution time', short:'Exception resolution', outcome:'Fewer late deliveries and less phone work in the hubs.',
+     metric:'Median hours to resolve an exception', dec:1, suf:' hrs', baseline:9.5, current:6.4, target:4.0, start:'2026-01-15', due:'2027-01-31', owner:'Marcus Lee', value:210000, sens:.30,
+     milestones:[ms('Exception categories agreed with hub leads','2026-02-20',1), ms('Auto-triage rules live in 4 hubs','2026-06-30',1), ms('Hub lead training complete for hubs 5 and 6','2026-10-01',0), ms('Auto-triage rules extended to remaining hubs','2026-11-15',0)]},
+    {id:'g2', title:'Bring all 9 regional hubs onto the platform', short:'Hub rollout', outcome:'One consistent dispatch process across the whole network.',
+     metric:'Hubs live', dec:0, suf:' hubs', baseline:2, current:6, target:9, start:'2026-02-01', due:'2027-03-31', owner:'Sam Okafor', value:160000, sens:.15,
+     milestones:[ms('Hubs 1 to 4 live','2026-05-15',1), ms('Hubs 5 and 6 live','2026-09-10',1), ms('Hubs 7 and 8 live','2026-12-10',0), ms('Hub 9 live','2027-03-15',0)]},
+    {id:'g3', title:'Lift monthly seat activation', short:'Seat activation', outcome:'Licenses that are paid for are used by the people they were bought for.',
+     metric:'Licensed seats active each month', dec:0, suf:'%', baseline:42, current:73, target:90, start:'2025-10-01', due:'2027-01-31', owner:'Marcus Lee', value:95000, sens:.25,
+     milestones:[ms('Role-based training launched','2026-03-01',1), ms('One named champion per hub','2026-07-15',1), ms('Quarterly seat audit and reassignment','2026-10-31',0), ms('Activation campaign for inactive users','2026-12-01',0)]},
+    {id:'g4', title:'Automate carrier performance scorecards', short:'Carrier scorecards', outcome:'Finance sees on-time and cost data by carrier without manual file work.',
+     metric:'Carriers scored automatically', dec:0, suf:' carriers', baseline:0, current:15, target:40, start:'2026-05-01', due:'2026-12-31', owner:'Sam Okafor', value:90000, sens:.20,
+     milestones:[ms('Carrier data mapping signed off','2026-06-15',1), ms('Pilot with 15 carriers','2026-09-01',1), ms('Scorecard review with finance','2026-11-20',0), ms('Scale to 40 carriers','2026-12-31',0)]}
+  ],
+  actions:[
+    ac('a1','Complete hub lead training for hubs 5 and 6','Customer','Marcus Lee','2026-10-23','g1'),
+    ac('a2','Review auto-triage rule performance and tune thresholds','Vendor','Priya Raman','2026-10-30','g1'),
+    ac('a3','Run the seat audit and reassign about 60 unused licenses','Joint','Marcus Lee and Priya Raman','2026-10-31','g3'),
+    ac('a4','Confirm hub 7 and 8 go-live date and IT cutover window','Customer','Sam Okafor','2026-11-06','g2'),
+    ac('a5','Share carrier API credentials for the next 25 carriers','Customer','Sam Okafor','2026-11-13','g4'),
+    ac('a6','Executive checkpoint on goals that are behind pace','Joint','Dana Whitfield and Priya Raman','2026-11-19','all'),
+    ac('a7','Launch the activation campaign to inactive users','Vendor','Priya Raman','2026-12-01','g3'),
+    ac('a8','Prepare renewal and expansion proposal for the Q1 decision','Vendor','Priya Raman','2026-12-15','renewal')
+  ],
+  features:[
+    {id:'f1', name:'Carrier API connector', desc:'Pulls carrier data in automatically, so scorecards stop depending on manual file uploads.', effort:'Medium', lifts:{g4:.35}},
+    {id:'f2', name:'Auto-triage rules in the remaining 5 hubs', desc:'Extends the rules already working in hubs 1 to 4, which cut exception handling time there.', effort:'Low', lifts:{g1:.20}},
+    {id:'f3', name:'Role-based onboarding checklists', desc:'Gives each dispatcher a guided first two weeks, which is where most inactive seats stall.', effort:'Low', lifts:{g3:.20, g2:.08}},
+    {id:'f4', name:'Mobile dispatcher app', desc:'Lets supervisors resolve exceptions from the dock or the road.', effort:'Medium', lifts:{g3:.12, g1:.08}}
+  ],
+  expansions:[
+    {id:'x1', name:'Customer service desk', seats:80, arr:52000, why:'Service agents field the same late-delivery calls the hubs now resolve in the app.', prereq:'Needs exception categories from the hubs shared with the service team.'},
+    {id:'x2', name:'Warehouse floor leads', seats:120, arr:68000, why:'Floor leads trigger most exceptions at the dock but cannot see them today.', prereq:'Best started after hubs 7 and 8 are live.'}
+  ]
+},
+{
+  id:'brightwell', name:'Brightwell Health Partners', segment:'Mid-market', industry:'Outpatient clinics, 9 locations',
+  arr:210000, renewal:'2027-01-15', csm:'Jonah Pierce',
+  sponsor:'Dr. Elena Marsh, Chief Operating Officer', champion:'Tasha Brooks, Patient Access Manager',
+  health:84, nps:57,
+  usage:{licensed:[200,200,200,200,200,220,220,220,220,220,220,220], active:[120,128,140,151,160,168,172,175,179,182,185,187]},
+  support:{tickets:61, firstResponse:'2.4 hrs', csat:'4.7', escalations:0},
+  highlights:[
+    {big:'-4.2 pts', label:'Patient no-show rate', text:'Missed appointments fell from 14.2% to 10.0% across all 9 clinics.'},
+    {big:'52%', label:'Patients on the portal', text:'Up from 31% in February after the check-in prompt launched.'},
+    {big:'31 hrs', label:'Weekly reminder-call time', text:'Down from 62 hours a week as text reminders took over.'}
+  ],
+  goals:[
+    {id:'g1', title:'Reduce patient no-shows', short:'No-show rate', outcome:'More filled appointment slots and steadier clinic revenue.',
+     metric:'Appointments missed', dec:1, suf:'%', baseline:14.2, current:10.0, target:8.0, start:'2026-01-10', due:'2027-01-31', owner:'Tasha Brooks', value:150000, sens:.20,
+     milestones:[ms('Text reminders live in all clinics','2026-04-15',1), ms('No-show reporting by clinic','2026-07-31',1), ms('Two-way rescheduling pilot','2026-11-13',0), ms('Waitlist fill pilot','2027-01-15',0)]},
+    {id:'g2', title:'Grow patient portal enrollment', short:'Portal enrollment', outcome:'Patients book, confirm and reschedule without calling the front desk.',
+     metric:'Patients enrolled', dec:0, suf:'%', baseline:31, current:52, target:70, start:'2026-02-01', due:'2027-02-28', owner:'Tasha Brooks', value:70000, sens:.25,
+     milestones:[ms('Portal live in all clinics','2026-04-30',1), ms('Check-in prompt launched','2026-08-15',1), ms('QR code on every check-in screen','2026-10-30',0), ms('Enrollment drive at 3 lowest clinics','2026-12-15',0)]},
+    {id:'g3', title:'Move reminders off the phone', short:'Reminder calls', outcome:'Front desk staff spend time with patients instead of dialing.',
+     metric:'Staff hours on reminder calls per week', dec:0, suf:' hrs', baseline:62, current:31, target:20, start:'2026-01-10', due:'2026-12-31', owner:'Tasha Brooks', value:95000, sens:.15,
+     milestones:[ms('Call lists retired in 2 clinics','2026-06-30',1), ms('Call lists retired in 5 clinics','2026-12-04',0), ms('Call lists retired in all 9 clinics','2026-12-31',0)]}
+  ],
+  actions:[
+    ac('a1','Add the portal QR code to check-in screens at all 9 clinics','Customer','Tasha Brooks','2026-10-30','g2'),
+    ac('a2','Pilot two-way SMS rescheduling in 2 clinics','Joint','Tasha Brooks and Jonah Pierce','2026-11-13','g1'),
+    ac('a3','Review no-show results by clinic and share what the best clinics do','Vendor','Jonah Pierce','2026-11-20','g1'),
+    ac('a4','Executive review of results and renewal scope','Joint','Dr. Elena Marsh and Jonah Pierce','2026-11-30','renewal'),
+    ac('a5','Retire manual reminder call lists in 5 clinics','Customer','Tasha Brooks','2026-12-04','g3'),
+    ac('a6','Draft the renewal with the imaging center option','Vendor','Jonah Pierce','2026-12-04','renewal'),
+    ac('a7','Confirm imaging center go-live requirements','Customer','Tasha Brooks','2026-12-18','renewal')
+  ],
+  features:[
+    {id:'f1', name:'Two-way SMS rescheduling', desc:'Patients reply to a reminder to move their visit, which frees the slot for someone else.', effort:'Low', lifts:{g1:.12, g3:.15}},
+    {id:'f2', name:'Portal QR code at check-in', desc:'Gives every patient at the desk a one-scan path into the portal.', effort:'Low', lifts:{g2:.30}},
+    {id:'f3', name:'Waitlist auto-fill', desc:'Offers a cancelled slot to waiting patients within minutes.', effort:'Medium', lifts:{g1:.10}}
+  ],
+  expansions:[
+    {id:'x1', name:'Imaging center scheduling', seats:35, arr:31000, why:'Imaging has the highest no-show cost per slot and no reminder workflow today.', prereq:'Needs imaging appointment types loaded into the scheduler.'},
+    {id:'x2', name:'Billing team follow-ups', seats:25, arr:22000, why:'Billing staff already chase the same patients the front desk reminds.', prereq:'Works best after the portal passes 60% enrollment.'}
+  ]
+},
+{
+  id:'tallis', name:'Tallis Retail Group', segment:'Enterprise', industry:'Specialty retail, 140 stores',
+  arr:720000, renewal:'2027-06-30', csm:'Camille Duarte',
+  sponsor:'Raj Venkataraman, SVP Digital Commerce', champion:'Ines Oliveira, Merchandising Systems Lead',
+  health:61, nps:18,
+  usage:{licensed:[900,900,900,900,900,900,900,900,900,900,900,900], active:[470,478,490,500,505,512,520,525,530,534,538,540]},
+  support:{tickets:188, firstResponse:'5.8 hrs', csat:'3.7', escalations:9},
+  highlights:[
+    {big:'-6 days', label:'Promotion launch time', text:'Down from 21 days to 15 since the template pilot started in March.'},
+    {big:'47%', label:'Stores on the daily task board', text:'Up from 22% in February, about 66 of 140 stores.'},
+    {big:'4 of 10', label:'Inventory integration steps', text:'Data mapping, sandbox access and two sync jobs are complete.'}
+  ],
+  goals:[
+    {id:'g1', title:'Launch promotions faster', short:'Promotion launch time', outcome:'Merchandising can react to demand while it still matters.',
+     metric:'Days from brief to live', dec:0, suf:' days', baseline:21, current:15, target:7, start:'2026-03-01', due:'2027-02-28', owner:'Ines Oliveira', value:300000, sens:.25,
+     milestones:[ms('Template pilot with one region','2026-04-30',1), ms('Approval workflow simplified','2026-08-31',1), ms('First 5 templates published','2026-11-20',0), ms('Bulk scheduling in pilot region','2026-12-15',0)]},
+    {id:'g2', title:'Put every store on the daily task board', short:'Store task board', outcome:'Store teams run promotions and resets the same way everywhere.',
+     metric:'Stores active weekly', dec:0, suf:'%', baseline:22, current:47, target:75, start:'2026-02-15', due:'2027-04-30', owner:'Ruth Abara', value:220000, sens:.25,
+     milestones:[ms('Pilot in 20 stores','2026-05-15',1), ms('Region 1 and 2 rollout','2026-08-31',1), ms('A named champion in every region','2026-10-30',0), ms('Rollout to regions 3 to 5','2027-01-31',0)]},
+    {id:'g3', title:'Connect inventory data to promotions', short:'Inventory integration', outcome:'Promotions use live stock levels, so stores are not selling what they do not have.',
+     metric:'Integration milestones complete', dec:0, suf:' of 10', baseline:0, current:4, target:10, start:'2026-06-01', due:'2027-03-31', owner:'Ines Oliveira', value:180000, sens:.15,
+     milestones:[ms('Data mapping approved','2026-07-15',1), ms('Sandbox access granted','2026-08-20',1), ms('Sync jobs 3 and 4 in sandbox','2026-11-30',0), ms('Production cutover rehearsal','2027-02-15',0)]}
+  ],
+  actions:[
+    ac('a1','Agree on the first 10 promotion templates to build','Joint','Ines Oliveira and Camille Duarte','2026-10-21','g1'),
+    ac('a2','Provide inventory sandbox access for sync jobs 3 and 4','Customer','Lucas Brandt','2026-10-28','g3'),
+    ac('a3','Name a store ops champion for each region','Customer','Ruth Abara','2026-10-30','g2'),
+    ac('a4','Review open issues with the promotion scheduler','Vendor','Camille Duarte','2026-11-05','support'),
+    ac('a5','Approve bulk scheduling for the pilot region','Customer','Ines Oliveira','2026-11-06','g1'),
+    ac('a6','Turn on mobile push for the task board in 20 stores','Joint','Ruth Abara and Camille Duarte','2026-11-18','g2'),
+    ac('a7','Build and publish templates 1 to 5','Vendor','Camille Duarte','2026-11-20','g1'),
+    ac('a8','Executive checkpoint on goals that are behind pace','Joint','Raj Venkataraman and Camille Duarte','2026-12-10','all')
+  ],
+  features:[
+    {id:'f1', name:'Promotion template library', desc:'Reusable promotion setups so merchandising stops rebuilding the same offer by hand.', effort:'Medium', lifts:{g1:.30}},
+    {id:'f2', name:'Bulk scheduling', desc:'Schedules a promotion across many stores in one step instead of store by store.', effort:'Low', lifts:{g1:.15}},
+    {id:'f3', name:'Task board mobile push', desc:'Sends store teams a nudge when a promotion or reset needs action.', effort:'Low', lifts:{g2:.25}},
+    {id:'f4', name:'Inventory sync webhook (beta)', desc:'Speeds up the stock-level feed the integration steps depend on.', effort:'Medium', lifts:{g3:.20}}
+  ],
+  expansions:[
+    {id:'x1', name:'Ecommerce merchandising team', seats:90, arr:54000, why:'Online promotions run on a separate manual process that the template library would replace.', prereq:'Needs the first 5 templates published.'},
+    {id:'x2', name:'Regional ops managers', seats:45, arr:27000, why:'Managers review store execution but have no view of task board completion.', prereq:'Needs regional champions named first.'}
+  ]
+}
+];
+/* ============================ END DATA LAYER ============================ */
+
+/* ----------------------------- helpers ----------------------------- */
+const D = s => { const p=s.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); };
+const dayDiff = (a,b) => Math.round((b-a)/864e5);
+const fmtDate = (d,o) => d.toLocaleDateString('en-US', o||{month:'short',day:'numeric'});
+const fmtFull = d => fmtDate(d,{month:'short',day:'numeric',year:'numeric'});
+const fmtMY = d => fmtDate(d,{month:'short',year:'numeric'});
+const money = n => '$'+Math.round(n).toLocaleString('en-US');
+const clamp01 = v => Math.max(0,Math.min(1,v));
+const fmtVal = (g,v) => (Number(v).toFixed(g.dec||0))+(g.suf||'');
+const STATUS = {achieved:'Target reached', on:'On track', risk:'At risk', off:'Off track'};
+const pill = s => `<span class="pill ${s}">${STATUS[s]}</span>`;
+const monthsLate = d => { const m=Math.round(d/30); return m<=1 ? 'about a month' : `about ${m} months`; };
+
+function calcGoal(g, mult){
+  mult = mult==null?1:mult;
+  const start=D(g.start), due=D(g.due);
+  const elapsed=Math.max(1,dayDiff(start,ASOF));
+  const remaining=Math.max(0,dayDiff(ASOF,due));
+  const span=g.target-g.baseline;
+  const done=g.current-g.baseline;
+  const pct=span? done/span : 0;
+  const fut=(done/elapsed)*mult;
+  const projected=g.current+fut*remaining;
+  const projPct=span? (projected-g.baseline)/span : 0;
+  let finish=null;
+  if(pct>=1) finish=ASOF;
+  else if(span && fut/span>0) finish=new Date(ASOF.getTime()+((g.target-g.current)/fut)*864e5);
+  const status = pct>=1 ? 'achieved' : projPct>=0.95 ? 'on' : projPct>=0.8 ? 'risk' : 'off';
+  return {pct,projected,projPct,finish,status,due,start,lateDays: finish?dayDiff(due,finish):null};
+}
+
+const state={acct:0,tab:'review',filter:'All',lev:{},commit:{}};
+const A = () => ACCTS[state.acct];
+const lev = a => state.lev[a.id] || (state.lev[a.id]={enable:0,feat:new Set(),exp:new Set()});
+const commits = a => state.commit[a.id] || (state.commit[a.id]=new Set());
+function multFor(a,g){
+  const L=lev(a); let m=1+(L.enable/100)*(g.sens||0);
+  a.features.forEach(f=>{ if(L.feat.has(f.id) && f.lifts[g.id]) m+=f.lifts[g.id]; });
+  return m;
+}
+const goalById = (a,id) => a.goals.find(g=>g.id===id);
+const valueOf = (g,c) => g.value*clamp01(c.projPct);
+function openMilestones(a){
+  const out=[];
+  a.goals.forEach(g=>g.milestones.forEach(m=>{ if(!m.done) out.push({g,m,d:D(m.due)}); }));
+  return out.sort((x,y)=>x.d-y.d);
+}
+
+function paceText(g,c){
+  if(c.status==='achieved') return `Target reached. Holding at ${fmtVal(g,g.current)}.`;
+  const proj=fmtVal(g,c.projected), tgt=fmtVal(g,g.target), due=fmtFull(c.due);
+  if(c.status==='on'){
+    return c.projPct>=1
+      ? `At the current pace you reach ${proj} by ${due}, which meets the ${tgt} target.`
+      : `At the current pace you reach ${proj} by ${due}, just under the ${tgt} target and close enough to close with normal momentum.`;
+  }
+  const fin = c.finish ? `Projected finish: ${fmtMY(c.finish)}, ${monthsLate(c.lateDays)} after the due date.` : 'The current pace does not reach the target.';
+  return `At the current pace you reach ${proj} by ${due}, short of the ${tgt} target. ${fin}`;
+}
+
+/* ----------------------------- chart: usage ----------------------------- */
+function usageChart(a){
+  const n=18, W=640, H=280, l=46, r=20, t=24, b=34;
+  const lic=a.usage.licensed, act=a.usage.active;
+  const gain=(act[11]-act[8])/3;
+  const fut=[]; for(let k=1;k<=6;k++) fut.push(Math.min(lic[11], Math.round(act[11]+gain*k)));
+  const maxV=Math.ceil(Math.max.apply(null,lic)*1.08/100)*100;
+  const X=i=>l+i*(W-l-r)/(n-1), Y=v=>t+(H-t-b)*(1-v/maxV);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Monthly active users against licensed seats for 12 months, with a projection to March 2027 at the current pace">`;
+  for(let k=0;k<=4;k++){ const v=maxV*k/4; s+=`<line class="grid-l" x1="${l}" x2="${W-r}" y1="${Y(v)}" y2="${Y(v)}"/><text class="svg-t" x="${l-8}" y="${Y(v)+4}" text-anchor="end">${Math.round(v)}</text>`; }
+  s+=`<rect x="${X(11)}" y="${t}" width="${X(17)-X(11)}" height="${H-t-b}" fill="var(--future-soft)" opacity=".55"/><text class="svg-t fut" x="${X(14)}" y="${t-8}" text-anchor="middle">at current pace</text>`;
+  for(let i=0;i<n;i++){
+    const d=new Date(2025,9+i,1), x=X(i);
+    s+=`<line class="grid-l" x1="${x}" x2="${x}" y1="${H-b}" y2="${H-b+4}"/>`;
+    if(i%3===0) s+=`<text class="svg-t" x="${x}" y="${H-b+18}" text-anchor="middle">${fmtDate(d,{month:'short'})}${(i===0||d.getMonth()===0)?' ’'+String(d.getFullYear()).slice(2):''}</text>`;
+  }
+  let lp=`M${X(0)} ${Y(lic[0])}`; for(let i=1;i<12;i++) lp+=` L${X(i)} ${Y(lic[i-1])} L${X(i)} ${Y(lic[i])}`; lp+=` L${X(17)} ${Y(lic[11])}`;
+  s+=`<path d="${lp}" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  let ap=`M${X(0)} ${H-b}`; act.forEach((v,i)=>{ ap+=` L${X(i)} ${Y(v)}`; }); ap+=` L${X(11)} ${H-b} Z`;
+  s+=`<path d="${ap}" fill="var(--accent)" opacity=".14"/>`;
+  let line=`M${X(0)} ${Y(act[0])}`; act.forEach((v,i)=>{ if(i) line+=` L${X(i)} ${Y(v)}`; });
+  s+=`<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/>`;
+  let fp=`M${X(11)} ${Y(act[11])}`; fut.forEach((v,k)=>{ fp+=` L${X(12+k)} ${Y(v)}`; });
+  s+=`<path d="${fp}" fill="none" stroke="var(--future)" stroke-width="2.5" stroke-dasharray="6 4"/>`;
+  s+=`<circle cx="${X(11)}" cy="${Y(act[11])}" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
+  s+=`<text class="svg-t acc" x="${X(11)-8}" y="${Y(act[11])-12}" text-anchor="end">${act[11]} active</text>`;
+  s+=`<circle cx="${X(17)}" cy="${Y(fut[5])}" r="5" fill="var(--surface)" stroke="var(--future)" stroke-width="2.5"/>`;
+  s+=`<text class="svg-t fut" x="${X(17)}" y="${Y(fut[5])+(fut[5]>=lic[11]-2?18:-12)}" text-anchor="end">${fut[5]} by Mar</text>`;
+  s+=`<text class="svg-t" x="${l+6}" y="${Y(lic[0])-8}">${lic[0]} licensed</text>`;
+  if(lic[11]!==lic[0]) s+=`<text class="svg-t" x="${X(11)}" y="${Y(lic[11])-8}" text-anchor="end">${lic[11]} licensed</text>`;
+  s+=`</svg>`;
+  return `<div class="chart">${s}</div><div class="legend"><span><i></i>Active users</span><span><i class="dash"></i>Licensed seats</span><span><i class="fut"></i>Trailing 3-month pace continued</span></div>`;
+}
+
+/* ----------------------------- chart: roadmap timeline ----------------------------- */
+function wrap(s,n){ const w=s.split(' '); const lines=[]; let cur=''; w.forEach(x=>{ if((cur+' '+x).trim().length>n){ lines.push(cur); cur=x; } else cur=(cur+' '+x).trim(); }); lines.push(cur); return lines.slice(0,2); }
+function timeline(a){
+  const W=980, left=190, right=30, top=44, rowH=52;
+  const ax0=new Date(2026,9,1), ax1=new Date(2027,9,1);
+  const X=d=>left+(Math.min(Math.max(+d,+ax0),+ax1)-ax0)/(ax1-ax0)*(W-left-right);
+  const H=top+a.goals.length*rowH+36;
+  let bands='', grid='', body='';
+  a.goals.forEach((g,i)=>{ if(i%2===0) bands+=`<rect class="band" x="0" y="${top+i*rowH}" width="${W}" height="${rowH}"/>`; });
+  for(let i=0;i<=12;i++){
+    const d=new Date(2026,9+i,1), x=X(d);
+    grid+=`<line class="grid-l" x1="${x}" x2="${x}" y1="${top-10}" y2="${H-30}"/>`;
+    if(i<12){
+      grid+=`<text class="svg-t" x="${X(new Date(2026,9+i,16))}" y="${top-16}" text-anchor="middle">${fmtDate(d,{month:'short'})}</text>`;
+      if(i===0||d.getMonth()===0) grid+=`<text class="svg-t strong" x="${x+3}" y="12">${d.getFullYear()}</text>`;
+    }
+  }
+  a.goals.forEach((g,i)=>{
+    const c=calcGoal(g,1), y=top+i*rowH;
+    wrap(g.short,22).forEach((ln,k)=>{ body+=`<text class="svg-t strong" x="12" y="${y+22+k*14}">${ln}</text>`; });
+    const x0=X(D(g.start)), x1=X(D(g.due));
+    body+=`<rect class="bar ${c.status}" x="${x0}" y="${y+12}" width="${Math.max(2,x1-x0)}" height="12" rx="6"/>`;
+    body+=`<line x1="${x1}" x2="${x1}" y1="${y+6}" y2="${y+30}" stroke="var(--ink)" stroke-width="2"/>`;
+    g.milestones.forEach(m=>{
+      const md=D(m.due); if(md<ax0||md>ax1) return;
+      const cls = m.done?'done':(md<ASOF?'late':'open');
+      body+=`<circle class="ms ${cls}" cx="${X(md)}" cy="${y+18}" r="6"><title>${m.t} (${fmtDate(md)})</title></circle>`;
+    });
+    if(c.finish && c.status!=='achieved'){
+      if(c.finish>ax1){
+        body+=`<text class="svg-t fut" x="${W-right}" y="${y+44}" text-anchor="end">projected finish after Sep 2027</text>`;
+      } else {
+        const fx=X(c.finish);
+        body+=`<path class="fin" d="M${fx} ${y+9} L${fx+9} ${y+18} L${fx} ${y+27} L${fx-9} ${y+18} Z"><title>Projected finish ${fmtMY(c.finish)}</title></path>`;
+        if(c.lateDays>10) body+=`<text class="svg-t fut" x="${fx}" y="${y+44}" text-anchor="${fx>W-150?'end':'middle'}">projected ${fmtDate(c.finish,{month:'short',year:'numeric'})}</text>`;
+      }
+    }
+  });
+  const tx=X(ASOF);
+  body+=`<line class="today" x1="${tx}" x2="${tx}" y1="${top-10}" y2="${H-30}"/><text class="svg-t strong" x="${tx}" y="${H-12}" text-anchor="start">Today</text>`;
+  const rd=D(a.renewal);
+  if(rd<=ax1){ const rx=X(rd); body+=`<line class="renew" x1="${rx}" x2="${rx}" y1="${top-10}" y2="${H-30}"/><text class="svg-t fut" x="${rx}" y="${H-12}" text-anchor="${rx>W-120?'end':'middle'}">Renewal ${fmtDate(rd)}</text>`; }
+  return `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Timeline of goal windows, milestones, projected finish dates and the renewal date">${bands}${grid}${body}</svg></div>
+  <div class="legend"><span><i style="border-top-color:var(--good)"></i>Goal window, colored by pace</span><span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="var(--accent)"/></svg> Milestone done</span><span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/></svg> Milestone open</span><span><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="var(--surface)" stroke="var(--bad)" stroke-width="2.5"/></svg> Overdue</span><span><i class="dia"></i>Projected finish at current pace</span></div>`;
+}
+
+/* ----------------------------- panels ----------------------------- */
+function summaryText(a){
+  const ev=a.goals.map(g=>({g,c:calcGoal(g,1)}));
+  const ok=ev.filter(e=>e.c.status==='on'||e.c.status==='achieved').length;
+  const worry=ev.filter(e=>e.c.status==='risk'||e.c.status==='off');
+  const next=openMilestones(a)[0];
+  let t=`${ok} of ${ev.length} goals in the success plan are on pace to land by their due dates.`;
+  if(worry.length) t+=` ${worry.map(e=>e.g.short).join(', ').replace(/, ([^,]*)$/, ' and $1')} ${worry.length>1?'need':'needs'} attention before the next review.`;
+  else t+=' Nothing is behind pace right now.';
+  if(next) t+=` Next milestone: ${next.m.t.charAt(0).toLowerCase()+next.m.t.slice(1)}, due ${fmtDate(next.d)}.`;
+  return t;
+}
+function panelReview(a){
+  const hl=a.highlights.map(h=>`<div class="hl-item"><div class="hl-big">${h.big}</div><div><b>${h.label}</b><span class="t">${h.text}</span></div></div>`).join('');
+  const sp=a.support;
+  const up=openMilestones(a).slice(0,5).map(o=>{
+    const late=o.d<ASOF;
+    return `<li><span class="box ${late?'late':''}" aria-hidden="true"></span><span>${o.m.t}<br><span class="muted" style="font-size:13px">${o.g.short}</span></span><span class="ms-d ${late?'late':''}">${late?'Overdue ':''}${fmtDate(o.d)}</span></li>`;
+  }).join('');
+  return `
+  <section class="lead"><div class="txt"><p class="eyebrow">The short version</p><p class="t">${summaryText(a)}</p></div><button class="btn" data-act="go" data-v="goals">See each goal</button></section>
+  <div class="grid2">
+    <section class="card"><h2>Who is using the platform</h2><p class="muted">Monthly active users against licensed seats, and where the current pace leads through March 2027.</p>${usageChart(a)}</section>
+    <section class="card"><h2>What changed this year</h2><div class="hl">${hl}</div>
+      <h3 style="margin-top:6px">Support snapshot</h3>
+      <div class="sup"><div><div class="k">Tickets</div><div class="v">${sp.tickets}</div></div><div><div class="k">First response</div><div class="v">${sp.firstResponse}</div></div><div><div class="k">CSAT</div><div class="v">${sp.csat}/5</div></div><div><div class="k">Escalations</div><div class="v">${sp.escalations}</div></div></div>
+    </section>
+  </div>
+  <section class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px"><h2>Coming up in the success plan</h2><button class="btn ghost small" data-act="go" data-v="roadmap">Open the roadmap</button></div><ul class="mslist">${up}</ul></section>`;
+}
+
+function goalCard(a,g){
+  const c=calcGoal(g,1);
+  const fillW=clamp01(c.pct)*100, projW=clamp01(c.projPct)*100;
+  const ms=g.milestones.map(m=>{
+    const d=D(m.due), late=!m.done && d<ASOF;
+    return `<li><span class="box ${m.done?'done':(late?'late':'')}" aria-hidden="true">${m.done?'✓':''}</span><span class="${m.done?'done-t':''}">${m.t}${m.done?' <span class="muted">(done)</span>':''}</span><span class="ms-d ${late?'late':''}">${late?'Overdue ':''}${fmtDate(d)}</span></li>`;
+  }).join('');
+  const helpers=a.features.filter(f=>f.lifts[g.id]);
+  const gap = (c.status==='risk'||c.status==='off') && helpers.length
+    ? `<div class="gap-box"><span><b>What could close the gap:</b> ${helpers.map(f=>f.name).join(', ')}.</span><button class="btn ghost small" data-act="go" data-v="opps">See opportunities</button></div>` : '';
+  return `<article class="goal">
+    <div class="goal-h"><h3>${g.title}</h3>${pill(c.status)}</div>
+    <p class="muted">${g.outcome}</p>
+    <div class="facts">
+      <div><div class="k">Started at</div><div class="v">${fmtVal(g,g.baseline)}</div></div>
+      <div><div class="k">Today</div><div class="v">${fmtVal(g,g.current)}</div></div>
+      <div><div class="k">Target</div><div class="v">${fmtVal(g,g.target)}</div></div>
+      <div><div class="k">Due</div><div class="v">${fmtFull(D(g.due))}</div></div>
+      <div><div class="k">Owner</div><div class="v" style="font-family:var(--font-body);font-size:15px">${g.owner}</div></div>
+    </div>
+    <div>
+      <div class="track" role="img" aria-label="${g.metric}: ${Math.round(clamp01(c.pct)*100)} percent of the way to target, projected ${Math.round(clamp01(c.projPct)*100)} percent by the due date"><div class="fill" style="width:${fillW}%"></div><div class="proj" style="left:${Math.max(2,projW)}%"></div></div>
+      <div class="legend"><span><i></i>Progress to target (${Math.round(clamp01(c.pct)*100)}%)</span><span><i class="dia"></i>Where the current pace lands by the due date (${fmtVal(g,c.projected)})</span></div>
+    </div>
+    <p class="pace">${paceText(g,c)}</p>
+    ${gap}
+    <div><h3 style="margin-bottom:8px;font-size:14px" class="muted">Milestones</h3><ul class="mslist">${ms}</ul></div>
+  </article>`;
+}
+function panelGoals(a){
+  const order={off:0,risk:1,on:2,achieved:3};
+  const list=a.goals.slice().sort((x,y)=>order[calcGoal(x,1).status]-order[calcGoal(y,1).status]);
+  const ev=a.goals.map(g=>calcGoal(g,1));
+  const cnt=k=>ev.filter(e=>e.status===k).length;
+  return `<section class="lead"><div class="txt"><p class="eyebrow">Success plan</p><p class="t">${cnt('on')+cnt('achieved')} on track, ${cnt('risk')} at risk, ${cnt('off')} off track. Goals behind pace come first.</p></div></section>
+  <div class="goals">${list.map(g=>goalCard(a,g)).join('')}</div>`;
+}
+
+function commitText(a){
+  const set=commits(a);
+  const rows=a.actions.filter(x=>set.has(x.id)).sort((x,y)=>D(x.due)-D(y.due));
+  if(!rows.length) return '';
+  return `Agreed next steps: ${a.name}, QBR ${fmtFull(ASOF)}\n`+rows.map(x=>`- ${x.t} (${x.who}, due ${fmtFull(D(x.due))})`).join('\n');
+}
+function panelRoadmap(a){
+  const set=commits(a);
+  const f=state.filter;
+  const rows=a.actions.filter(x=>f==='All'||x.owner===f).sort((x,y)=>D(x.due)-D(y.due));
+  const goalName=id=>{ if(id==='all') return 'All goals'; if(id==='renewal') return 'Renewal'; if(id==='support') return 'Support'; return goalById(a,id).short; };
+  const list=rows.map(x=>`<div class="action"><div><div class="ttl">${x.t}</div><div class="meta"><span class="chip ${x.owner}">${x.owner}</span><span>${x.who}</span><span class="mono">Due ${fmtDate(D(x.due))}</span><span class="chip">${goalName(x.goal)}</span></div></div><button class="btn ghost small" id="commit-${x.id}" data-act="commit" data-v="${x.id}" aria-pressed="${set.has(x.id)}">${set.has(x.id)?'Committed':'Commit'}</button></div>`).join('');
+  const txt=commitText(a);
+  const filters=['All','Customer','Vendor','Joint'].map(k=>`<button class="btn ghost small" id="filter-${k}" data-act="filter" data-v="${k}" aria-pressed="${f===k}">${k}</button>`).join('');
+  return `<section class="card"><h2>The next 12 months</h2><p class="muted">Each goal runs from its start to its due date. The outlined diamond shows where the current pace actually finishes.</p>${timeline(a)}</section>
+  <section class="card"><div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center"><h2>Next 90 days: who does what</h2><div class="filters" role="group" aria-label="Filter by owner">${filters}</div></div>
+    <p class="muted">Commit to the actions you agree on in the room. They collect into a summary you can send after the meeting.</p>
+    <div class="actions">${list}</div></section>
+  <section class="card"><h2>Agreed next steps</h2>${txt?`<textarea id="commit-text" rows="${Math.min(12,txt.split('\n').length+1)}" readonly>${txt}</textarea><div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><button class="btn" data-act="copy">Copy summary</button><span id="copy-msg" class="muted" role="status"></span></div>`:`<p class="muted">Nothing committed yet. Use the Commit buttons above during the review.</p>`}</section>`;
+}
+
+function featureImpact(a,f){
+  let v=0;
+  Object.keys(f.lifts).forEach(id=>{ const g=goalById(a,id); const b=calcGoal(g,1), s=calcGoal(g,1+f.lifts[id]); v+=valueOf(g,s)-valueOf(g,b); });
+  return v;
+}
+function panelOpps(a){
+  const L=lev(a);
+  const feats=a.features.slice().sort((x,y)=>featureImpact(a,y)-featureImpact(a,x)).map(f=>{
+    const lifts=Object.keys(f.lifts).map(id=>`<li><span>${goalById(a,id).short}</span><span class="l">+${Math.round(f.lifts[id]*100)}% pace</span></li>`).join('');
+    const on=L.feat.has(f.id);
+    return `<article class="opp"><h3>${f.name}</h3><p class="muted">${f.desc}</p><ul>${lifts}</ul>
+      <div class="foot"><span class="chip">${f.effort} effort</span><span class="mono" style="font-size:13px">Value at stake ${money(featureImpact(a,f))}</span></div>
+      <button class="btn ghost small" id="feat-${f.id}" data-act="feat" data-v="${f.id}" aria-pressed="${on}">${on?'In what-if':'Add to what-if'}</button></article>`;
+  }).join('');
+  const exps=a.expansions.map(x=>{
+    const on=L.exp.has(x.id);
+    return `<article class="opp"><h3>${x.name}</h3><p class="muted">${x.why}</p><ul><li><span>Estimated seats</span><span class="mono">${x.seats}</span></li><li><span>Estimated annual contract value</span><span class="mono">${money(x.arr)}</span></li></ul><p style="font-size:14px"><b>Before starting:</b> ${x.prereq}</p>
+      <button class="btn ghost small" id="exp-${x.id}" data-act="exp" data-v="${x.id}" aria-pressed="${on}">${on?'In what-if':'Add to what-if'}</button></article>`;
+  }).join('');
+  return `<section class="lead"><div class="txt"><p class="eyebrow">Where else this can go</p><p class="t">Features not yet in use are ranked by the customer value they protect on the goals above. Add any of them to the what-if to see how the plan changes.</p></div><button class="btn" data-act="go" data-v="whatif">Open what-if</button></section>
+  <section><h2 style="margin-bottom:12px">Adoption whitespace</h2><div class="cards">${feats}</div></section>
+  <section><h2 style="margin-bottom:12px">Teams and groups not yet using it</h2><div class="cards">${exps}</div></section>`;
+}
+
+function enableText(v){
+  if(!v) return 'Today’s plan';
+  const s=Math.round(v/100*6);
+  return `+${v}% (about ${s} extra sessions per quarter)`;
+}
+function wiResults(a){
+  const L=lev(a);
+  const ev=a.goals.map(g=>({g,b:calcGoal(g,1),s:calcGoal(g,multFor(a,g))}));
+  const ok=k=>ev.filter(e=>e[k].status==='on'||e[k].status==='achieved').length;
+  const vB=ev.reduce((t,e)=>t+valueOf(e.g,e.b),0), vS=ev.reduce((t,e)=>t+valueOf(e.g,e.s),0);
+  const exp=a.expansions.filter(x=>L.exp.has(x.id)).reduce((t,x)=>t+x.arr,0);
+  const changed=L.enable>0||L.feat.size>0||L.exp.size>0;
+  const insight = changed
+    ? `With these changes, ${ok('s')} of ${ev.length} goals pace to land on time, compared with ${ok('b')} today. Customer value realized moves from ${money(vB)} to ${money(vS)}${exp?`, and the expansion adds ${money(exp)} in annual contract value`:''}.`
+    : `Pick levers on the left to see how the plan changes. Everything below shows today’s plan.`;
+  const rows=ev.map(e=>{
+    const fin=c=>c.status==='achieved'?'Reached':(c.finish?fmtMY(c.finish):'Not at this pace');
+    const w=c=>Math.min(Math.max(c.projPct,0),1.1)/1.1*100;
+    return `<div class="wi-row"><div><h3 style="font-size:15px">${e.g.short}</h3><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center">${pill(e.b.status)}${changed?`<span aria-hidden="true">→</span>${pill(e.s.status)}`:''}</div></div>
+      <div><div class="bar2" role="img" aria-label="Projected share of target by due date: today ${Math.round(clamp01(e.b.projPct)*100)} percent, with changes ${Math.round(clamp01(e.s.projPct)*100)} percent"><i class="${e.b.status} ghost" style="width:${w(e.b)}%"></i>${changed?`<i class="${e.s.status}" style="width:${w(e.s)}%"></i>`:`<i class="${e.b.status}" style="width:${w(e.b)}%"></i>`}<span class="tick" style="left:${100/1.1}%"></span></div>
+      <div class="rowlab"><span>Share of target by due date: ${Math.round(clamp01(e.s.projPct)*100)}%</span><span>Finish: ${fin(e.s)}${changed&&fin(e.s)!==fin(e.b)?` (was ${fin(e.b)})`:''}</span></div></div></div>`;
+  }).join('');
+  return `<p class="insight">${insight}</p>
+   <div class="res-tiles"><div><div class="k">Goals on pace</div><div class="v">${ok('s')} of ${ev.length}${changed&&ok('s')!==ok('b')?` <small>from ${ok('b')}</small>`:''}</div></div>
+   <div><div class="k">Customer value realized</div><div class="v">${money(vS)}${changed&&vS>vB+1?` <small>+${money(vS-vB)}</small>`:''}</div></div>
+   <div><div class="k">Expansion in scenario</div><div class="v">${money(exp)}</div></div></div>
+   <div>${rows}</div>
+   <p class="muted" style="font-size:13px">Customer value realized is the annual value of each goal multiplied by the share of its target reached by the due date. Lift percentages are planning assumptions, not guarantees.</p>`;
+}
+function panelWhatIf(a){
+  const L=lev(a);
+  const feats=a.features.map(f=>`<div class="sw"><div><div class="n">${f.name}</div><div class="s">${Object.keys(f.lifts).map(id=>goalById(a,id).short).join(', ')}</div></div><button class="btn ghost small" id="feat-${f.id}" data-act="feat" data-v="${f.id}" aria-pressed="${L.feat.has(f.id)}">${L.feat.has(f.id)?'On':'Off'}</button></div>`).join('');
+  const exps=a.expansions.map(x=>`<div class="sw"><div><div class="n">${x.name}</div><div class="s">${x.seats} seats, ${money(x.arr)} per year</div></div><button class="btn ghost small" id="exp-${x.id}" data-act="exp" data-v="${x.id}" aria-pressed="${L.exp.has(x.id)}">${L.exp.has(x.id)?'On':'Off'}</button></div>`).join('');
+  return `<div class="wi">
+    <section class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>Levers</h2><button class="btn ghost small" data-act="reset">Reset</button></div>
+      <div class="lever"><label for="enable" style="font-weight:600">Extra enablement</label><input type="range" id="enable" min="0" max="100" step="5" value="${L.enable}" aria-describedby="enable-out"><div class="mono" id="enable-out" style="font-size:13px">${enableText(L.enable)}</div><div class="muted" style="font-size:13px">Training, office hours and champion coaching on top of the current plan.</div></div>
+      <div class="lever"><div style="font-weight:600">Turn on unused features</div>${feats}</div>
+      <div class="lever"><div style="font-weight:600">Bring in more teams</div>${exps}</div>
+    </section>
+    <section class="card" id="wi-results" aria-live="polite">${wiResults(a)}</section>
+  </div>`;
+}
+
+/* ----------------------------- shell ----------------------------- */
+const TABS=[['review','Year in review'],['goals','Success plan goals'],['roadmap','Roadmap'],['opps','Opportunities'],['whatif','What if']];
+const root=document.getElementById('root');
+function header(a){
+  const rd=dayDiff(ASOF,D(a.renewal));
+  const seat=Math.round(a.usage.active[11]/a.usage.licensed[11]*100), seat0=Math.round(a.usage.active[0]/a.usage.licensed[0]*100);
+  const ev=a.goals.map(g=>calcGoal(g,1)); const ok=ev.filter(c=>c.status==='on'||c.status==='achieved').length;
+  const hc=a.health>=75?'c-good':a.health>=60?'c-warn':'c-bad', hw=a.health>=75?'Healthy':a.health>=60?'Needs watching':'At risk';
+  const opts=ACCTS.map((x,i)=>`<option value="${i}" ${i===state.acct?'selected':''}>${x.name}</option>`).join('');
+  return `<header class="top"><div><p class="eyebrow">Quarterly business review, Q3 2026</p><h1 class="acct-name">${a.name}</h1>
+    <div class="sub"><span>${a.segment}, ${a.industry}</span><span>Executive sponsor: ${a.sponsor}</span><span>Champion: ${a.champion}</span><span>Customer success: ${a.csm}</span></div></div>
+    <div class="pick"><label for="acct-select">Account</label><select id="acct-select">${opts}</select></div></header>
+  <div class="stats">
+    <div class="stat"><div class="k">Health score</div><div class="v ${hc}">${a.health}</div><div class="d">${hw}, NPS ${a.nps}</div></div>
+    <div class="stat"><div class="k">Seat activation</div><div class="v">${seat}%</div><div class="d">${seat>=seat0?'Up':'Down'} ${Math.abs(seat-seat0)} pts from ${seat0}% a year ago</div></div>
+    <div class="stat"><div class="k">Goals on pace</div><div class="v">${ok} of ${a.goals.length}</div><div class="d">Based on the success plan</div></div>
+    <div class="stat"><div class="k">Renewal</div><div class="v">${rd} days</div><div class="d">${fmtFull(D(a.renewal))}, ${money(a.arr)} per year</div></div>
+  </div>`;
+}
+function render(){
+  const prev=document.activeElement&&document.activeElement.id; const y=window.scrollY;
+  const a=A();
+  const tabs=TABS.map(t=>`<button class="tab" role="tab" id="tab-${t[0]}" data-act="tab" data-v="${t[0]}" aria-selected="${state.tab===t[0]}" aria-controls="panel" tabindex="${state.tab===t[0]?0:-1}">${t[1]}</button>`).join('');
+  const body={review:panelReview,goals:panelGoals,roadmap:panelRoadmap,opps:panelOpps,whatif:panelWhatIf}[state.tab](a);
+  root.innerHTML=`${header(a)}<nav class="tabs" role="tablist" aria-label="QBR sections">${tabs}</nav><main id="panel" role="tabpanel" aria-labelledby="tab-${state.tab}">${body}</main>
+  <footer class="note"><span>All accounts, people and figures are synthetic sample data shaped like a customer success platform export.</span><span>Projections extend each goal’s pace since its start date to its due date. Replace the data layer in the page source to connect live data.</span></footer>`;
+  window.scrollTo(0,y);
+  if(prev){ const el=document.getElementById(prev); if(el&&el.focus) el.focus({preventScroll:true}); }
+}
+function setTab(t){ state.tab=t; try{ history.replaceState(null,'','#'+t); }catch(e){} }
+function updateWI(){
+  const a=A(), o=document.getElementById('wi-results'); if(o) o.innerHTML=wiResults(a);
+  const out=document.getElementById('enable-out'); if(out) out.textContent=enableText(lev(a).enable);
+}
+function toggle(set,v){ if(set.has(v)) set.delete(v); else set.add(v); }
+
+root.addEventListener('click',function(e){
+  const t=e.target.closest('[data-act]'); if(!t) return;
+  const a=A(), act=t.dataset.act, v=t.dataset.v;
+  if(act==='tab'){ setTab(v); }
+  else if(act==='go'){ setTab(v); window.scrollTo(0,0); }
+  else if(act==='commit'){ toggle(commits(a),v); }
+  else if(act==='feat'){ toggle(lev(a).feat,v); }
+  else if(act==='exp'){ toggle(lev(a).exp,v); }
+  else if(act==='filter'){ state.filter=v; }
+  else if(act==='reset'){ state.lev[a.id]={enable:0,feat:new Set(),exp:new Set()}; }
+  else if(act==='copy'){
+    const ta=document.getElementById('commit-text'), msg=document.getElementById('copy-msg'); if(!ta) return;
+    const fallback=()=>{ ta.focus(); ta.select(); if(msg) msg.textContent='Select and copy the text above.'; };
+    try{ navigator.clipboard.writeText(ta.value).then(()=>{ if(msg) msg.textContent='Copied.'; },fallback); }catch(err){ fallback(); }
+    return;
+  }
+  render();
+});
+root.addEventListener('change',function(e){
+  if(e.target.id==='acct-select'){ state.acct=+e.target.value; state.filter='All'; render(); }
+});
+root.addEventListener('input',function(e){
+  if(e.target.id==='enable'){ lev(A()).enable=+e.target.value; updateWI(); }
+});
+root.addEventListener('keydown',function(e){
+  if(!e.target.matches||!e.target.matches('[role="tab"]')) return;
+  if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return;
+  const i=TABS.findIndex(t=>t[0]===state.tab), n=(i+(e.key==='ArrowRight'?1:-1)+TABS.length)%TABS.length;
+  setTab(TABS[n][0]); render(); const el=document.getElementById('tab-'+TABS[n][0]); if(el) el.focus();
+});
+try{ const h=(location.hash||'').slice(1); if(TABS.some(t=>t[0]===h)) state.tab=h; }catch(e){}
+render();
+})();
+</script>
+</body>
+</html>
